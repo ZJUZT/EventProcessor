@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<configuration>
+    <ip_address>121.40.237.99</ip_address>
+    <websocket_port>8080</websocket_port>
+    <enable_stats_request>false</enable_stats_request>
+    <web_client>
+        <max_connection>300</max_connection>
+        <max_queue>60000</max_queue>
+    </web_client>
+
+    <ssl>
+        <enabled>false</enabled>
+        <cert_path>/Users/rogerlai/Documents/certs/server.crt</cert_path>
+        <key_path>/Users/rogerlai/Documents/certs/myrsakey_pcks8</key_path>
+    </ssl>
+
+    <hbase>
+        <hosts>hadoop.master,hadoop.slave</hosts>
+        <port>2181</port>
+    </hbase>
+
+    <heartbeat>
+        <reader_idle_time>200</reader_idle_time>
+        <writer_idle_time>60</writer_idle_time>
+        <all_idle_time>1200</all_idle_time>
+    </heartbeat>
+
+    <thread_sleep_time>10</thread_sleep_time>
+    <max_users_in_batch>1000</max_users_in_batch>
+    <page_size_of_actions_in_hbase>20</page_size_of_actions_in_hbase>
+
+    <auth_endpoint>
+        <protocol>http</protocol>
+        <host>218.244.149.168</host>
+        <api>/api/v1/user/account_info</api>
+    </auth_endpoint>
+
+    <monitor>
+        <opentsdb ip="localhost" port="4242"></opentsdb>
+        <metric>com.egeio.realtime.websocket</metric>
+        <interval>10</interval>
+    </monitor>
+
+    <rabbitmq>
+        <mq_host>localhost</mq_host>
+    </rabbitmq>
+
+    <memcached>
+        <host>localhost</host>
+        <port>11211</port>
+    </memcached>
+
+
+</configuration>
