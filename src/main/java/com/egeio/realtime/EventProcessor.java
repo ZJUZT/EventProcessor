@@ -35,6 +35,10 @@ public class EventProcessor {
     private final static long memPort = Config
             .getNumber("/configuration/memcached/port", 11211);
 
+    private final static String rabbitMqHost = Config.getConfig()
+            .getElement("/configuration/rabbitmq/mq_host").getText();
+
+
 //    private final static String rabbitMqHost = Config.getConfig()
 //            .getElement("/configuration/rabbitmq/mq_host").getText();
     //set rabbitmq host to localhost for now
@@ -52,9 +56,8 @@ public class EventProcessor {
 
     public static void main(String[] argv) throws Exception {
 
-        String rabbitMqHost = "localhost";
-//        String rabbitMqHost = Config.getConfig()
-//                    .getElement("/configuration/rabbitmq/mq_host").getText();
+//        String rabbitMqHost = "localhost";
+//        logger.info(uuid,"{}",rabbitMqHost);
         ConnectionFactory factory = new ConnectionFactory();
         factory.setHost(rabbitMqHost);
         Connection connection = factory.newConnection();
