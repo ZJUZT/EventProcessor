@@ -5,6 +5,9 @@ import com.egeio.core.log.Logger;
 import com.egeio.core.log.LoggerFactory;
 import com.egeio.core.log.MyUUID;
 import com.egeio.core.utils.GsonUtils;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
@@ -35,12 +38,11 @@ public class EventProcessor {
     private final static long memPort = Config
             .getNumber("/configuration/memcached/port", 11211);
 
-    private final static String rabbitMqHost = Config.getConfig()
+    private static String rabbitMqHost = Config.getConfig()
             .getElement("/configuration/rabbitmq/mq_host").getText();
-
-    //    private final static String rabbitMqHost = Config.getConfig()
-    //            .getElement("/configuration/rabbitmq/mq_host").getText();
     //set rabbitmq host to localhost for now
+
+    private static Connection connection;
 
     static {
         try {
@@ -49,47 +51,83 @@ public class EventProcessor {
         }
         catch (IOException e) {
             logger.error(uuid, "Init MemCached Client failed");
+            System.exit(-1);
         }
     }
 
-    public static void main(String[] argv) throws Exception {
+    public static void main(String[] argv) {
 
         //        String rabbitMqHost = "localhost";
         //        logger.info(uuid,"{}",rabbitMqHost);
+        //        String rabbitMqHost = "112.124.70.25";
+        //        String rabbitMqHost = "localhost";
+//        logger.info(uuid,"rabbitMq host:{}",rabbitMqHost);
+        rabbitMqHost = "localhost";
         ConnectionFactory factory = new ConnectionFactory();
         factory.setHost(rabbitMqHost);
-        Connection connection = factory.newConnection();
-        Channel channel = connection.createChannel();
+        QueueingConsumer consumer = null;
+        Channel channel = null;
+        try {
+            Connection connection = factory.newConnection();
+            channel = connection.createChannel();
 
-        channel.queueDeclare(TASK_QUEUE_NAME, true, false, false, null);
-        //        System.out.println(" [*] Waiting for messages. To exit press CTRL+C");
+            channel.queueDeclare(TASK_QUEUE_NAME, true, false, false, null);
+            //dispatch tasks in balance
+            channel.basicQos(1);
 
-        //dispatch tasks in balance
-        channel.basicQos(1);
-
-        QueueingConsumer consumer = new QueueingConsumer(channel);
-        channel.basicConsume(TASK_QUEUE_NAME, false, consumer);
+            consumer = new QueueingConsumer(channel);
+            channel.basicConsume(TASK_QUEUE_NAME, false, consumer);
+        }
+        catch (Exception e) {
+            logger.error(uuid, "Failed to connect to rabbit mq");
+            System.exit(-1);
+        }
 
         //monitoring the rabbitmq
+        String message = null;
+        QueueingConsumer.Delivery delivery = null;
         while (true) {
-            QueueingConsumer.Delivery delivery = consumer.nextDelivery();
-            String message = new String(delivery.getBody(), "UTF-8");
-            String[] userIDs = message.split(",");
-
-            //            System.out.println(" [x] Received '" + userID + "'");
-            //            HttpRequest s = new HttpRequest("localhost",8081);
-            //            s.sendMsgToServer(message);
-            logger.info(uuid, "Received userID to push:{}", userIDs);
-
-            for (String userID : userIDs) {
-                handleMessage(userID);
+            try {
+                delivery = consumer.nextDelivery();
+                message = new String(delivery.getBody(), "UTF-8");
             }
-            //            System.out.println(" [x] Done");
-            channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
+            catch (Exception e) {
+                logger.error(uuid, "Message delivery failed");
+            }
+
+            JsonObject json = null;
+            try {
+                json = GsonUtils.getGson().fromJson(message, JsonObject.class);
+            }
+            catch (Exception e) {
+                logger.info(uuid, "Json format error");
+            }
+
+            if (json == null || json.get("user_id") == null) {
+                logger.error(uuid, "No user_id found in json object");
+            }
+            else {
+                JsonArray userIDInfo = json.get("user_id").getAsJsonArray();
+                logger.info(uuid, "Received userID to push:{}", userIDInfo);
+                for (JsonElement userID : userIDInfo) {
+                    handleMessage(userID.getAsString());
+                }
+                logger.info(uuid, "Message:{}", message);
+            }
+            try {
+                if (delivery != null) {
+                    channel.basicAck(delivery.getEnvelope().getDeliveryTag(),
+                            false);
+                }
+            }
+            catch (IOException e) {
+                e.printStackTrace();
+            }
         }
+
     }
 
-    private static void handleMessage(String userID) throws Exception {
+    private static void handleMessage(String userID) {
         //Get all real-time server nodes the user is connecting
         Set<String> addresses = getNodeAddressByUserID(userID);
         if (addresses == null) {
@@ -104,18 +142,25 @@ public class EventProcessor {
         }
     }
 
-    private static Set<String> getNodeAddressByUserID(String userID)
-            throws Exception {
-        Set<String> result;
+    private static Set<String> getNodeAddressByUserID(String userID) {
+        Set<String> result = null;
         if (memClient.get(userID) == null) {
             result = null;
         }
         else {
-            String jsonObj = GsonUtils.getGson().toJson(memClient.get(userID));
-            result = GsonUtils.getGson().fromJson(
-                    jsonObj.substring(1, jsonObj.length() - 1)
-                            .replace("\\", ""), new TypeToken<Set<String>>() {
-                    }.getType());
+            String jsonObj = null;
+            try {
+                jsonObj = GsonUtils.getGson().toJson(memClient.get(userID));
+                result = GsonUtils.getGson().fromJson(
+                        jsonObj.substring(1, jsonObj.length() - 1)
+                                .replace("\\", ""),
+                        new TypeToken<Set<String>>() {
+                        }.getType());
+            }
+            catch (Exception e) {
+                logger.error(uuid, "Json format exception");
+            }
+
         }
         return result;
     }
