@@ -25,12 +25,13 @@ public class HttpRequest {
         String result = "";
         try {
             URL realUrl = new URL(url);
-            HttpURLConnection conn = (HttpURLConnection)realUrl.openConnection();
+            HttpURLConnection conn = (HttpURLConnection) realUrl
+                    .openConnection();
             conn.setRequestProperty("accept", "*/*");
             conn.setRequestProperty("connection", "Keep-Alive");
             conn.setDoOutput(true);
             conn.setDoInput(true);
-//            conn.connect();
+            //            conn.connect();
             out = new PrintWriter(conn.getOutputStream());
             //send u_id
             out.print(param);
@@ -41,7 +42,7 @@ public class HttpRequest {
             while ((line = in.readLine()) != null) {
                 result += line;
             }
-//            System.out.println(result);
+            //            System.out.println(result);
         }
         catch (Exception e) {
             logger.info(uuid, "Send post request failed");

@@ -38,11 +38,9 @@ public class EventProcessor {
     private final static String rabbitMqHost = Config.getConfig()
             .getElement("/configuration/rabbitmq/mq_host").getText();
 
-
-//    private final static String rabbitMqHost = Config.getConfig()
-//            .getElement("/configuration/rabbitmq/mq_host").getText();
+    //    private final static String rabbitMqHost = Config.getConfig()
+    //            .getElement("/configuration/rabbitmq/mq_host").getText();
     //set rabbitmq host to localhost for now
-
 
     static {
         try {
@@ -56,15 +54,15 @@ public class EventProcessor {
 
     public static void main(String[] argv) throws Exception {
 
-//        String rabbitMqHost = "localhost";
-//        logger.info(uuid,"{}",rabbitMqHost);
+        //        String rabbitMqHost = "localhost";
+        //        logger.info(uuid,"{}",rabbitMqHost);
         ConnectionFactory factory = new ConnectionFactory();
         factory.setHost(rabbitMqHost);
         Connection connection = factory.newConnection();
         Channel channel = connection.createChannel();
 
         channel.queueDeclare(TASK_QUEUE_NAME, true, false, false, null);
-//        System.out.println(" [*] Waiting for messages. To exit press CTRL+C");
+        //        System.out.println(" [*] Waiting for messages. To exit press CTRL+C");
 
         //dispatch tasks in balance
         channel.basicQos(1);
@@ -78,15 +76,15 @@ public class EventProcessor {
             String message = new String(delivery.getBody(), "UTF-8");
             String[] userIDs = message.split(",");
 
-//            System.out.println(" [x] Received '" + userID + "'");
+            //            System.out.println(" [x] Received '" + userID + "'");
             //            HttpRequest s = new HttpRequest("localhost",8081);
             //            s.sendMsgToServer(message);
             logger.info(uuid, "Received userID to push:{}", userIDs);
 
-            for(String userID:userIDs){
+            for (String userID : userIDs) {
                 handleMessage(userID);
             }
-//            System.out.println(" [x] Done");
+            //            System.out.println(" [x] Done");
             channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
         }
     }
@@ -94,14 +92,14 @@ public class EventProcessor {
     private static void handleMessage(String userID) throws Exception {
         //Get all real-time server nodes the user is connecting
         Set<String> addresses = getNodeAddressByUserID(userID);
-        if(addresses==null){
-            logger.info(uuid,"user {} is not on line",userID);
+        if (addresses == null) {
+            logger.info(uuid, "user {} is not on line", userID);
             return;
         }
-        for(String address:addresses){
-            String realTimeNode =
-                    "http://" + address + "/push";
-            logger.info(uuid, "Real-time Node address:{} for user:{}", realTimeNode,userID);
+        for (String address : addresses) {
+            String realTimeNode = "http://" + address + "/push";
+            logger.info(uuid, "Real-time Node address:{} for user:{}",
+                    realTimeNode, userID);
             HttpRequest.sendPost(realTimeNode, "userID=" + userID);
         }
     }
@@ -109,10 +107,10 @@ public class EventProcessor {
     private static Set<String> getNodeAddressByUserID(String userID)
             throws Exception {
         Set<String> result;
-        if(memClient.get(userID)==null){
+        if (memClient.get(userID) == null) {
             result = null;
         }
-        else{
+        else {
             String jsonObj = GsonUtils.getGson().toJson(memClient.get(userID));
             result = GsonUtils.getGson().fromJson(
                     jsonObj.substring(1, jsonObj.length() - 1)

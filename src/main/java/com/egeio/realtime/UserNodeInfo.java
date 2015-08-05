@@ -7,22 +7,20 @@ import com.google.gson.annotations.SerializedName;
  */
 public class UserNodeInfo {
 
-    @SerializedName("user_id")
-    private String UserID;
+    @SerializedName("user_id") private String UserID;
 
-    @SerializedName("server_node")
-    private String ServerNode;
+    @SerializedName("server_node") private String ServerNode;
 
-    public UserNodeInfo(String userID,String serverNode){
+    public UserNodeInfo(String userID, String serverNode) {
         this.ServerNode = serverNode;
         this.UserID = userID;
     }
 
-    public String getUserID(){
+    public String getUserID() {
         return this.UserID;
     }
 
-    public  String getServerNode(){
+    public String getServerNode() {
         return this.ServerNode;
     }
 
