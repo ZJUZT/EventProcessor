@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<configuration>
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <layout class="ch.qos.logback.classic.PatternLayout">
+      <pattern>%d [%thread] %-5level [%logger{35}] - %msg%n----%n%ex{full}</pattern>
+    </layout>
+  </appender>
+
+  <appender name="FILE"
+            class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <File>/var/log/realtime/realtime.log</File>
+    <rollingPolicy
+            class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
+      <FileNamePattern>/var/log/realtime/realtime.%i.log
+      </FileNamePattern>
+      <minIndex>1</minIndex>
+      <maxIndex>4</maxIndex>
+    </rollingPolicy>
+    <triggeringPolicy
+            class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+      <maxFileSize>100MB</maxFileSize>
+    </triggeringPolicy>
+
+    <layout class="ch.qos.logback.classic.PatternLayout">
+      <Pattern>%d [%thread] %-5level [%logger{35}] - %msg%n----%n%ex{full}</Pattern>
+    </layout>
+  </appender>
+
+  <appender name="MONITOR"
+            class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <File>/var/log/realtime/monitor.log</File>
+    <rollingPolicy
+            class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
+      <FileNamePattern>/var/log/realtime/monitor.%i.log
+      </FileNamePattern>
+      <minIndex>1</minIndex>
+      <maxIndex>4</maxIndex>
+    </rollingPolicy>
+    <triggeringPolicy
+            class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+      <maxFileSize>100MB</maxFileSize>
+    </triggeringPolicy>
+    <layout class="ch.qos.logback.classic.PatternLayout">
+      <Pattern>%d [%thread] %-5level [%logger{35}] - %msg%n----%n%ex{full}</Pattern>
+    </layout>
+  </appender>
+
+  <logger name="com.egeio">
+    <level value="info" />
+  </logger>
+  <logger name="org.apache">
+    <level value="warn" />
+  </logger>
+
+  <logger name="monitor" additivity="false" level="info">
+    <appender-ref ref="MONITOR" />
+  </logger>
+
+  <root>
+    <level value="info" />
+    <appender-ref ref="STDOUT" />
+    <appender-ref ref="FILE" />
+  </root>
+</configuration>

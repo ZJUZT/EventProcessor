@@ -41,7 +41,7 @@ public class HttpRequest {
             while ((line = in.readLine()) != null) {
                 result += line;
             }
-            System.out.println(result);
+//            System.out.println(result);
         }
         catch (Exception e) {
             logger.info(uuid, "Send post request failed");
