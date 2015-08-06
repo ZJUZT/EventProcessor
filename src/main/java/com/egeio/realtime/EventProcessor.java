@@ -31,7 +31,6 @@ public class EventProcessor {
             .getLogger(EventProcessor.class);
     private static MyUUID uuid = new MyUUID();
     private static final String TASK_QUEUE_NAME = "new_message_queue";
-    private static final String URL = "";
     private static MemcachedClient memClient;
     private final static String memHost = Config.getConfig()
             .getElement("/configuration/memcached/host").getText();
@@ -41,8 +40,6 @@ public class EventProcessor {
     private static String rabbitMqHost = Config.getConfig()
             .getElement("/configuration/rabbitmq/mq_host").getText();
     //set rabbitmq host to localhost for now
-
-    private static Connection connection;
 
     static {
         try {
@@ -56,14 +53,8 @@ public class EventProcessor {
     }
 
     public static void main(String[] argv) {
-
-        //        String rabbitMqHost = "localhost";
-        //        logger.info(uuid,"{}",rabbitMqHost);
-        //        String rabbitMqHost = "112.124.70.25";
-        //        String rabbitMqHost = "localhost";
-//        logger.info(uuid,"rabbitMq host:{}",rabbitMqHost);
-        rabbitMqHost = "localhost";
         ConnectionFactory factory = new ConnectionFactory();
+        rabbitMqHost = "localhost";
         factory.setHost(rabbitMqHost);
         QueueingConsumer consumer = null;
         Channel channel = null;
@@ -131,7 +122,7 @@ public class EventProcessor {
         //Get all real-time server nodes the user is connecting
         Set<String> addresses = getNodeAddressByUserID(userID);
         if (addresses == null) {
-            logger.info(uuid, "user {} is not on line", userID);
+            logger.info(uuid, "user {} is not online", userID);
             return;
         }
         for (String address : addresses) {
@@ -148,7 +139,7 @@ public class EventProcessor {
             result = null;
         }
         else {
-            String jsonObj = null;
+            String jsonObj;
             try {
                 jsonObj = GsonUtils.getGson().toJson(memClient.get(userID));
                 result = GsonUtils.getGson().fromJson(
