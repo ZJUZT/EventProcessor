@@ -18,10 +18,11 @@ public class HttpRequest {
     private static MyUUID uuid = new MyUUID();
 
     public static void sendPost(String url, String param) {
-        PrintWriter out;
+        HttpURLConnection conn = null;
+        PrintWriter out = null;
         try {
             URL realUrl = new URL(url);
-            HttpURLConnection conn = (HttpURLConnection) realUrl
+            conn = (HttpURLConnection) realUrl
                     .openConnection();
             conn.setRequestProperty("accept", "*/*");
             conn.setRequestProperty("connection", "Keep-Alive");
@@ -35,6 +36,13 @@ public class HttpRequest {
         }
         catch (Exception e) {
             logger.info(uuid, "Send post request failed");
+        }finally {
+            if(conn!=null){
+                conn.disconnect();
+            }
+            if(out!=null){
+                out.close();
+            }
         }
     }
 
