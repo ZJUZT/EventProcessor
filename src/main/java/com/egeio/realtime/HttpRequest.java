@@ -22,8 +22,7 @@ public class HttpRequest {
         PrintWriter out = null;
         try {
             URL realUrl = new URL(url);
-            conn = (HttpURLConnection) realUrl
-                    .openConnection();
+            conn = (HttpURLConnection) realUrl.openConnection();
             conn.setRequestProperty("accept", "*/*");
             conn.setRequestProperty("connection", "Keep-Alive");
             conn.setDoOutput(true);
@@ -36,11 +35,12 @@ public class HttpRequest {
         }
         catch (Exception e) {
             logger.info(uuid, "Send post request failed");
-        }finally {
-            if(conn!=null){
+        }
+        finally {
+            if (conn != null) {
                 conn.disconnect();
             }
-            if(out!=null){
+            if (out != null) {
                 out.close();
             }
         }

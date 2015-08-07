@@ -36,8 +36,8 @@ public class EventProcessor implements Runnable {
     private final static long memPort = Config
             .getNumber("/configuration/memcached/port", 11211);
 
-//    private static String rabbitMqHost = Config.getConfig()
-//            .getElement("/configuration/rabbitmq/mq_host").getText();
+    //    private static String rabbitMqHost = Config.getConfig()
+    //            .getElement("/configuration/rabbitmq/mq_host").getText();
     //set rabbitmq host to localhost for now
     private static String hostName = Config.getConfig()
             .getElement("/configuration/ip_address").getText();
@@ -59,7 +59,7 @@ public class EventProcessor implements Runnable {
         }
     }
 
-    public void connectMq() throws IOException, TimeoutException {
+    private void connectMq() throws IOException, TimeoutException {
         connection = factory.newConnection();
         channel = connection.createChannel();
 
@@ -76,9 +76,10 @@ public class EventProcessor implements Runnable {
         consumer = new QueueingConsumer(channel);
         //Use hostname as consume tagName , So that We can monitor who consume this Queue
         channel.basicConsume(TASK_QUEUE_NAME, false, hostName, consumer);
+        logger.info(uuid, "Connecting to rabbitmq server");
     }
 
-    public void disconnectMq() throws IOException, TimeoutException {
+    private void disconnectMq() throws IOException, TimeoutException {
         channel.basicCancel(hostName);
         channel.close();
         connection.close();
@@ -208,7 +209,7 @@ public class EventProcessor implements Runnable {
      *
      * @param userID user id
      */
-    private static void handleMessage(String userID) {
+    private void handleMessage(String userID) {
         //Get all real-time server nodes the user is connecting
         Set<String> addresses = getNodeAddressByUserID(userID);
         if (addresses == null) {
@@ -230,7 +231,7 @@ public class EventProcessor implements Runnable {
      * @param userID user id
      * @return The set of Server addresses for user
      */
-    private static Set<String> getNodeAddressByUserID(String userID) {
+    private Set<String> getNodeAddressByUserID(String userID) {
         Set<String> result = null;
         if (memClient.get(userID) == null) {
             result = null;
@@ -253,8 +254,8 @@ public class EventProcessor implements Runnable {
         return result;
     }
 
-    public static void main(String[] args){
-        logger.info(uuid,"Event processor starts");
+    public static void main(String[] args) {
+        logger.info(uuid, "Event processor starts");
         new EventProcessor().run();
     }
 
