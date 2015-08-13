@@ -19,11 +19,6 @@
         <port>2181</port>
     </hbase>
 
-    <heartbeat>
-        <reader_idle_time>200</reader_idle_time>
-        <writer_idle_time>60</writer_idle_time>
-        <all_idle_time>1200</all_idle_time>
-    </heartbeat>
 
     <thread_sleep_time>10</thread_sleep_time>
     <max_users_in_batch>1000</max_users_in_batch>

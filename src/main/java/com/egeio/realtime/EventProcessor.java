@@ -4,6 +4,7 @@ import com.egeio.core.config.Config;
 import com.egeio.core.log.Logger;
 import com.egeio.core.log.LoggerFactory;
 import com.egeio.core.log.MyUUID;
+import com.egeio.core.monitor.MonitorClient;
 import com.egeio.core.utils.GsonUtils;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -15,7 +16,12 @@ import net.spy.memcached.MemcachedClient;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.util.Set;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
@@ -38,7 +44,7 @@ public class EventProcessor implements Runnable {
 
     //    private static String rabbitMqHost = Config.getConfig()
     //            .getElement("/configuration/rabbitmq/mq_host").getText();
-    //set rabbitmq host to localhost for now
+
     private static String hostName = Config.getConfig()
             .getElement("/configuration/ip_address").getText();
 
@@ -46,6 +52,13 @@ public class EventProcessor implements Runnable {
     private Channel channel = null;
     private Connection connection = null;
     private ConnectionFactory factory = new ConnectionFactory();
+
+    //monitoring thread
+    private static long notificationNum = 0;
+    private static MonitorClient opentsdbClient;
+    private static ScheduledExecutorService monitorExecutor = Executors
+            .newSingleThreadScheduledExecutor();
+
 
     //    initialization for Mem client
     static {
@@ -57,7 +70,38 @@ public class EventProcessor implements Runnable {
             logger.error(uuid, "Init MemCached Client failed");
             System.exit(-1);
         }
+        String metricPath = "/configuration/monitor/metric";
+        String intervalPath = "/configuration/monitor/interval";
+        opentsdbClient = MonitorClient.getInstance(
+                Config.getConfig().getElement(metricPath).getText());
+
+        long monitorInterval = Config.getNumber(intervalPath, 601);
+
+        monitorExecutor.scheduleAtFixedRate(new Runnable() {
+            @Override public void run() {
+                sendMonitorInfo();
+            }
+        }, monitorInterval, monitorInterval, TimeUnit.SECONDS);
     }
+
+    public static void sendMonitorInfo() {
+        Map<String, String> tags = new HashMap<>();
+        tags.put("type", "notification_num");
+        try {
+            tags.put("host", InetAddress.getLocalHost().getHostName());
+        }
+        catch (UnknownHostException e) {
+            logger.error(uuid, "unknow host error!", e);
+        }
+
+        MonitorClient.Record record = new MonitorClient.Record(notificationNum, tags);
+        List<MonitorClient.Record> records = new ArrayList<>();
+        records.add(record);
+        opentsdbClient.send(records);
+        //reset
+        notificationNum=0;
+    }
+
 
     private void connectMq() throws IOException, TimeoutException {
         connection = factory.newConnection();
@@ -74,15 +118,9 @@ public class EventProcessor implements Runnable {
         channel.basicQos(1);
 
         consumer = new QueueingConsumer(channel);
-        //Use hostname as consume tagName , So that We can monitor who consume this Queue
+        //Use hostname as consume tagName, so that We can monitor who consume this Queue
         channel.basicConsume(TASK_QUEUE_NAME, false, hostName, consumer);
-        logger.info(uuid, "Connecting to rabbitmq server");
-    }
-
-    private void disconnectMq() throws IOException, TimeoutException {
-        channel.basicCancel(hostName);
-        channel.close();
-        connection.close();
+        logger.info(uuid, "Connected to rabbitmq server");
     }
 
     public void run() {
@@ -131,12 +169,18 @@ public class EventProcessor implements Runnable {
             catch (InterruptedException e) {
                 logger.error(uuid, "Thread interrupted");
             }
+            catch (NullPointerException e){
+                logger.error(uuid,
+                        "No consumer created, try to connect to server again");
+                //Sleep 1s and reconnect to rabbitmq-server
+                break;
+            }
 
+            if (delivery == null) {
+                logger.info(uuid, "Empty delivery from queue");
+                continue;
+            }
             try {
-                if (delivery == null) {
-                    logger.info(uuid, "Error delivery from queue");
-                    continue;
-                }
                 message = new String(delivery.getBody(), "UTF-8");
                 json = GsonUtils.getGson().fromJson(message, JsonObject.class);
                 if (json == null || json.get("user_id") == null) {
@@ -153,25 +197,9 @@ public class EventProcessor implements Runnable {
             }
             catch (UnsupportedEncodingException e) {
                 logger.error(uuid, "Unsupported Encoding Exception");
-                try {
-                    disconnectMq();
-                }
-                catch (Exception e1) {
-                    logger.error(uuid,
-                            "Failed to close connection and channel");
-                }
-                continue;
             }
             catch (Exception e) {
                 logger.error(uuid, "GsonUtils error");
-                try {
-                    disconnectMq();
-                }
-                catch (Exception e1) {
-                    logger.error(uuid,
-                            "Failed to close connection and channel");
-                }
-                continue;
             }
 
             /**
@@ -185,8 +213,7 @@ public class EventProcessor implements Runnable {
              */
 
             try {
-                channel.basicAck(delivery.getEnvelope().getDeliveryTag(),
-                        false);
+                channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
             }
             catch (IOException e) {
                 e.printStackTrace();
@@ -194,9 +221,9 @@ public class EventProcessor implements Runnable {
         }
         //If because of the rabbitmq-server stop ,We will re-try connect to rabbitmq-server after 60s
         logger.warn(uuid,
-                "The rabbitmq Server have broken , We Try to re-connect again After 60 seconds");
+                "The rabbitmq Server have broken , We Try to re-connect again After 10 seconds");
         try {
-            Thread.sleep(1000 * 60);
+            Thread.sleep(1000 * 10);
         }
         catch (InterruptedException e) {
             e.printStackTrace();
@@ -216,6 +243,9 @@ public class EventProcessor implements Runnable {
             logger.info(uuid, "user {} is not online", userID);
             return;
         }
+
+        //add 1 to notification number
+        notificationNum++;
         for (String address : addresses) {
             String realTimeNode = "http://" + address + "/push";
             logger.info(uuid, "Real-time Node address:{} for user:{}",
