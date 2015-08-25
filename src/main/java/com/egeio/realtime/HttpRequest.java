@@ -17,7 +17,7 @@ public class HttpRequest {
     private static Logger logger = LoggerFactory.getLogger(HttpRequest.class);
     private static MyUUID uuid = new MyUUID();
 
-    public static void sendPost(String url, String param) {
+    public static void sendPost(String url, String content) {
         HttpURLConnection conn = null;
         PrintWriter out = null;
         try {
@@ -28,13 +28,12 @@ public class HttpRequest {
             conn.setDoOutput(true);
             conn.setDoInput(true);
             out = new PrintWriter(conn.getOutputStream());
-            //send u_id
-            out.print(param);
+            out.print(content);
             out.flush();
             conn.getInputStream();
         }
         catch (Exception e) {
-            logger.info(uuid, "Send post request failed");
+            logger.info(uuid, "Send post request to {} failed, content:{}",url,content);
         }
         finally {
             if (conn != null) {

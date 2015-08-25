@@ -24,12 +24,6 @@
     <max_users_in_batch>1000</max_users_in_batch>
     <page_size_of_actions_in_hbase>20</page_size_of_actions_in_hbase>
 
-    <auth_endpoint>
-        <protocol>http</protocol>
-        <host>218.244.149.168</host>
-        <api>/api/v1/user/account_info</api>
-    </auth_endpoint>
-
     <monitor>
         <opentsdb ip="localhost" port="4242"></opentsdb>
         <metric>com.egeio.realtime.websocket</metric>
@@ -37,13 +31,18 @@
     </monitor>
 
     <rabbitmq>
-        <mq_host>localhost</mq_host>
+        <mq_host>112.124.70.25</mq_host>
     </rabbitmq>
 
     <memcached>
         <host>localhost</host>
         <port>11211</port>
     </memcached>
+
+    <realtime>
+        <protocol>http</protocol>
+        <uri>/push</uri>
+    </realtime>
 
 
 </configuration>

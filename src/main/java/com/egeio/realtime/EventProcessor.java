@@ -6,6 +6,7 @@ import com.egeio.core.log.LoggerFactory;
 import com.egeio.core.log.MyUUID;
 import com.egeio.core.monitor.MonitorClient;
 import com.egeio.core.utils.GsonUtils;
+import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -42,15 +43,18 @@ public class EventProcessor implements Runnable {
     private final static long memPort = Config
             .getNumber("/configuration/memcached/port", 11211);
 
-    //    private static String rabbitMqHost = Config.getConfig()
-    //            .getElement("/configuration/rabbitmq/mq_host").getText();
+    private static String rabbitMqHost = Config.getConfig()
+            .getElement("/configuration/rabbitmq/mq_host").getText();
 
     private static String hostName = Config.getConfig()
             .getElement("/configuration/ip_address").getText();
+    private static String realtimeProtocol = Config.getConfig()
+            .getElement("/configuration/realtime/protocol").getText();
+    private static String realtimeURI = Config.getConfig()
+            .getElement("/configuration/realtime/uri").getText();
 
     private QueueingConsumer consumer = null;
     private Channel channel = null;
-    private Connection connection = null;
     private ConnectionFactory factory = new ConnectionFactory();
 
     //monitoring thread
@@ -58,7 +62,6 @@ public class EventProcessor implements Runnable {
     private static MonitorClient opentsdbClient;
     private static ScheduledExecutorService monitorExecutor = Executors
             .newSingleThreadScheduledExecutor();
-
 
     //    initialization for Mem client
     static {
@@ -94,17 +97,17 @@ public class EventProcessor implements Runnable {
             logger.error(uuid, "unknow host error!", e);
         }
 
-        MonitorClient.Record record = new MonitorClient.Record(notificationNum, tags);
+        MonitorClient.Record record = new MonitorClient.Record(notificationNum,
+                tags);
         List<MonitorClient.Record> records = new ArrayList<>();
         records.add(record);
         opentsdbClient.send(records);
         //reset
-        notificationNum=0;
+        resetNotificationNum();
     }
 
-
     private void connectMq() throws IOException, TimeoutException {
-        connection = factory.newConnection();
+        Connection connection = factory.newConnection();
         channel = connection.createChannel();
 
         channel.queueDeclare(TASK_QUEUE_NAME, true, false, false, null);
@@ -120,12 +123,10 @@ public class EventProcessor implements Runnable {
         consumer = new QueueingConsumer(channel);
         //Use hostname as consume tagName, so that We can monitor who consume this Queue
         channel.basicConsume(TASK_QUEUE_NAME, false, hostName, consumer);
-        logger.info(uuid, "Connected to rabbitmq server");
+        logger.info(uuid, "Connected to rabbitmq server:{}", rabbitMqHost);
     }
 
     public void run() {
-
-        String rabbitMqHost = "localhost";
         factory.setHost(rabbitMqHost);
         String message;
         QueueingConsumer.Delivery delivery = null;
@@ -169,7 +170,7 @@ public class EventProcessor implements Runnable {
             catch (InterruptedException e) {
                 logger.error(uuid, "Thread interrupted");
             }
-            catch (NullPointerException e){
+            catch (NullPointerException e) {
                 logger.error(uuid,
                         "No consumer created, try to connect to server again");
                 //Sleep 1s and reconnect to rabbitmq-server
@@ -181,18 +182,36 @@ public class EventProcessor implements Runnable {
                 continue;
             }
             try {
+                Gson gson = GsonUtils.getGson();
                 message = new String(delivery.getBody(), "UTF-8");
-                json = GsonUtils.getGson().fromJson(message, JsonObject.class);
+                json = gson.fromJson(message, JsonObject.class);
                 if (json == null || json.get("user_id") == null) {
                     logger.error(uuid, "No user_id found in json object");
                 }
                 else {
-                    JsonArray userIDInfo = json.get("user_id").getAsJsonArray();
-                    logger.info(uuid, "Received userID to push:{}", userIDInfo);
-                    for (JsonElement userID : userIDInfo) {
-                        handleMessage(userID.getAsString());
-                    }
                     logger.info(uuid, "Message:{}", message);
+                    JsonArray userIDInfo = json.get("user_id").getAsJsonArray();
+                    if (userIDInfo == null) {
+                        logger.error(uuid, "Can't find userId in this message");
+                        continue;
+                    }
+                    json.remove("user_id");
+                    Map<String, List<String>> serverUserMap = getServerUserMap(
+                            userIDInfo);
+                    for (String address : serverUserMap.keySet()) {
+                        List<String> userIdList = serverUserMap.get(address);
+                        JsonElement userIDJson = gson
+                                .fromJson(gson.toJson(userIdList),
+                                        JsonArray.class);
+                        JsonObject content = json.getAsJsonObject();
+                        content.add("user_id", userIDJson);
+                        sendNotification(realtimeProtocol, address, realtimeURI,
+                                gson.toJson(content));
+
+                        //add notification number
+                        addNotificationNum(userIdList.size());
+                    }
+
                 }
             }
             catch (UnsupportedEncodingException e) {
@@ -200,24 +219,19 @@ public class EventProcessor implements Runnable {
             }
             catch (Exception e) {
                 logger.error(uuid, "GsonUtils error");
-            }
-
-            /**
-             * If a consumer dies without sending an ack, RabbitMQ will
-             * understand that a message wasn't processed fully and will
-             * redeliver it to another consumer
-             * There aren't any message timeouts;
-             * RabbitMQ will redeliver the message only when
-             * the worker connection dies. It's fine even if processing
-             * a message takes a very, very long time
-             */
-
-            try {
-                channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
-            }
-            catch (IOException e) {
                 e.printStackTrace();
             }
+            finally {
+                //send ack anyway
+                try {
+                    channel.basicAck(delivery.getEnvelope().getDeliveryTag(),
+                            false);
+                }
+                catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+
         }
         //If because of the rabbitmq-server stop ,We will re-try connect to rabbitmq-server after 60s
         logger.warn(uuid,
@@ -231,27 +245,48 @@ public class EventProcessor implements Runnable {
         this.run();
     }
 
-    /**
-     * notify user if the user is online
-     *
-     * @param userID user id
-     */
-    private void handleMessage(String userID) {
-        //Get all real-time server nodes the user is connecting
-        Set<String> addresses = getNodeAddressByUserID(userID);
-        if (addresses == null) {
-            logger.info(uuid, "user {} is not online", userID);
-            return;
-        }
+    private void sendNotification(String protocol, String host, String uri,
+            String content) {
+        String realTimeAddress = String
+                .format("%s://%s%s", protocol, host, uri);
+        HttpRequest.sendPost(realTimeAddress, "data=" + content);
+        logger.info(uuid, "Try to send content:{} to {}", content,
+                realTimeAddress);
+    }
 
-        //add 1 to notification number
-        notificationNum++;
-        for (String address : addresses) {
-            String realTimeNode = "http://" + address + "/push";
-            logger.info(uuid, "Real-time Node address:{} for user:{}",
-                    realTimeNode, userID);
-            HttpRequest.sendPost(realTimeNode, "userID=" + userID);
+    private synchronized void addNotificationNum(int num) {
+        notificationNum += num;
+    }
+
+    private static synchronized void resetNotificationNum() {
+        notificationNum = 0;
+    }
+
+    /**
+     * @param userIDs userIDs to be rearranged according to the address of real-time server
+     * @return map which key is the address of real-time server and value is list of uids which currently connecting to the server
+     */
+    private Map<String, List<String>> getServerUserMap(JsonArray userIDs) {
+        Map<String, List<String>> serverUserMap = new HashMap<>();
+        for (JsonElement userID : userIDs) {
+            if (!userID.isJsonNull() && !userID.getAsString().equals("")) {
+                String uid = userID.getAsString();
+                Set<String> addresses = getNodeAddressByUserID(uid);
+                if (addresses != null) {
+                    for (String address : addresses) {
+                        if (serverUserMap.get(address) != null) {
+                            serverUserMap.get(address).add(uid);
+                        }
+                        else {
+                            List<String> list = new ArrayList<>();
+                            list.add(uid);
+                            serverUserMap.put(address, list);
+                        }
+                    }
+                }
+            }
         }
+        return serverUserMap;
     }
 
     /**
