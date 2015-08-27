@@ -8,10 +8,10 @@
 
   <appender name="FILE"
             class="ch.qos.logback.core.rolling.RollingFileAppender">
-    <File>/var/log/realtime/realtime.log</File>
+    <File>/var/log/eventprocessor/eventprocessor.log</File>
     <rollingPolicy
             class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-      <FileNamePattern>/var/log/realtime/realtime.%i.log
+      <FileNamePattern>/var/log/eventprocessor/eventprocessor.%i.log
       </FileNamePattern>
       <minIndex>1</minIndex>
       <maxIndex>4</maxIndex>
@@ -28,10 +28,10 @@
 
   <appender name="MONITOR"
             class="ch.qos.logback.core.rolling.RollingFileAppender">
-    <File>/var/log/realtime/monitor.log</File>
+    <File>/var/log/eventprocessor/monitor.log</File>
     <rollingPolicy
             class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-      <FileNamePattern>/var/log/realtime/monitor.%i.log
+      <FileNamePattern>/var/log/eventprocessor/monitor.%i.log
       </FileNamePattern>
       <minIndex>1</minIndex>
       <maxIndex>4</maxIndex>

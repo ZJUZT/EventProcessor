@@ -211,7 +211,6 @@ public class EventProcessor implements Runnable {
                         //add notification number
                         addNotificationNum(userIdList.size());
                     }
-
                 }
             }
             catch (UnsupportedEncodingException e) {
@@ -254,7 +253,7 @@ public class EventProcessor implements Runnable {
                 realTimeAddress);
     }
 
-    private synchronized void addNotificationNum(int num) {
+    private static synchronized void addNotificationNum(int num) {
         notificationNum += num;
     }
 
@@ -321,7 +320,11 @@ public class EventProcessor implements Runnable {
 
     public static void main(String[] args) {
         logger.info(uuid, "Event processor starts");
-        new EventProcessor().run();
+//        new EventProcessor().run();
+        Thread t1 = new Thread(new EventProcessor());
+        Thread t2 = new Thread(new EventProcessor());
+        t1.start();
+        t2.start();
     }
 
 }
