@@ -9,7 +9,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 
 /**
- * This class is used to send http request (the actual payload is user_id for now)
+ * This class is used to send http request
  * Created by think on 2015/8/2.
  */
 public class HttpRequest {
@@ -20,6 +20,7 @@ public class HttpRequest {
     public static void sendPost(String url, String content) {
         HttpURLConnection conn = null;
         PrintWriter out = null;
+
         try {
             URL realUrl = new URL(url);
             conn = (HttpURLConnection) realUrl.openConnection();
@@ -33,7 +34,7 @@ public class HttpRequest {
             conn.getInputStream();
         }
         catch (Exception e) {
-            logger.info(uuid, "Send post request to {} failed, content:{}",url,content);
+            logger.error(uuid, "Send post request to {} failed, content:{}",url,content);
         }
         finally {
             if (conn != null) {

@@ -134,6 +134,7 @@ public class EventProcessor implements Runnable {
 
         try {
             connectMq();
+            logger.info(uuid, "Event processor starts");
         }
         catch (Exception e) {
             logger.error(uuid, "Failed to connect to rabbit mq");
@@ -319,8 +320,7 @@ public class EventProcessor implements Runnable {
     }
 
     public static void main(String[] args) {
-        logger.info(uuid, "Event processor starts");
-//        new EventProcessor().run();
+
         Thread t1 = new Thread(new EventProcessor());
         Thread t2 = new Thread(new EventProcessor());
         t1.start();

@@ -1,28 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <configuration>
     <ip_address>121.40.237.99</ip_address>
-    <websocket_port>8080</websocket_port>
-    <enable_stats_request>false</enable_stats_request>
-    <web_client>
-        <max_connection>300</max_connection>
-        <max_queue>60000</max_queue>
-    </web_client>
-
-    <ssl>
-        <enabled>false</enabled>
-        <cert_path>/Users/rogerlai/Documents/certs/server.crt</cert_path>
-        <key_path>/Users/rogerlai/Documents/certs/myrsakey_pcks8</key_path>
-    </ssl>
-
-    <hbase>
-        <hosts>hadoop.master,hadoop.slave</hosts>
-        <port>2181</port>
-    </hbase>
-
-
-    <thread_sleep_time>10</thread_sleep_time>
-    <max_users_in_batch>1000</max_users_in_batch>
-    <page_size_of_actions_in_hbase>20</page_size_of_actions_in_hbase>
 
     <monitor>
         <opentsdb ip="localhost" port="4242"></opentsdb>
