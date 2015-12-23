@@ -32,11 +32,14 @@ import java.util.concurrent.TimeoutException;
  * Created by think on 2015/8/2.
  */
 public class EventProcessor implements Runnable {
-    //queue name
+
     private static Logger logger = LoggerFactory
             .getLogger(EventProcessor.class);
     private static MyUUID uuid = new MyUUID();
+
+    //queue name
     private static final String TASK_QUEUE_NAME = "new_message_queue";
+
     private static MemcachedClient memClient;
     private final static String memHost = Config.getConfig()
             .getElement("/configuration/memcached/host").getText();
@@ -57,13 +60,12 @@ public class EventProcessor implements Runnable {
     private Channel channel = null;
     private ConnectionFactory factory = new ConnectionFactory();
 
-    //monitoring thread
     private static long notificationNum = 0;
     private static MonitorClient opentsdbClient;
     private static ScheduledExecutorService monitorExecutor = Executors
             .newSingleThreadScheduledExecutor();
 
-    //    initialization for Mem client
+    //initialization for Mem client
     static {
         try {
             memClient = new MemcachedClient(
@@ -87,6 +89,7 @@ public class EventProcessor implements Runnable {
         }, monitorInterval, monitorInterval, TimeUnit.SECONDS);
     }
 
+    //monitoring thread
     public static void sendMonitorInfo() {
         Map<String, String> tags = new HashMap<>();
         tags.put("type", "notification_num");

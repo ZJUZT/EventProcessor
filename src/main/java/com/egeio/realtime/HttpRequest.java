@@ -34,7 +34,8 @@ public class HttpRequest {
             conn.getInputStream();
         }
         catch (Exception e) {
-            logger.error(uuid, "Send post request to {} failed, content:{}",url,content);
+            logger.error(uuid, "Send post request to {} failed, content:{}",
+                    url, content);
         }
         finally {
             if (conn != null) {
